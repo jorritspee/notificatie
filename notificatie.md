@@ -24,7 +24,7 @@ docstatus: "concept"
 
 ### Inleiding
 
-Notificeren in de zorg is geen op zichzelf staand technisch mechanisme, maar een functionele behoefte en afspraak tussen partijen. Het vertrekpunt is de informatiebehoefte van de ontvanger: een arts, afdeling, patiënt of ondersteunend systeem wil tijdig weten dat een relevante gebeurtenis heeft plaatsgevonden. De verzender faciliteert die behoefte op vooraf afgesproken onderwerpen en filters. Notificaties zijn daarmee ontvanger-gedreven, proportioneel en altijd ingebed in de geldende kaders voor identificatie, authenticatie, autorisatie en toestemming.
+Notificeren in de zorg is geen op zichzelf staand technisch mechanisme, maar een functionele behoefte en afspraak tussen partijen. Het vertrekpunt is de informatiebehoefte van de ontvanger: een arts, afdeling, patiënt of ondersteunend systeem wil tijdig weten dat een relevante gebeurtenis heeft plaatsgevonden. De verzender faciliteert die behoefte op vooraf afgesproken onderwerpen en filters. Notificaties zijn daarmee ontvanger-gedreven, proportioneel en altijd ingebed in de geldende kaders voor identificatie, authenticatie, autorisatie, toestemming en adressering.
 
 Deze specificatie beschrijft hoe organisaties in de Nederlandse zorg zulke notificaties eenduidig en veilig uitwisselen. Als technische basis gebruiken we het [FHIR R5 Subscription Framework](https://hl7.org/fhir/R5/subscriptions.html), toegepast in R4 via de [Subscriptions R5 Backport IG](https://hl7.org/fhir/uv/subscriptions-backport/). Voortbouwend op het werk van de werkgroep "geharmoniseerde notified pull" legt dit document de functionele uitgangspunten en de technische keuzes vast die nodig zijn voor interoperabele, implementeerbare notificatie-uitwisseling.
 
@@ -49,9 +49,9 @@ Binnen scope:
 Buiten scope:
 
 - De inhoudelijke pull die op een notificatie kan volgen (zie Notified Pull, Clinical Order Workflow).
-- De interne verwerking en routering bij de ontvanger na aankomst van de notificatie.
-- De technische invulling van toestemmingsregistratie (Mitz en aankomende EHDS-verordening).
-- De concrete registratie, publicatie en resolutie van notificatie-endpoints (adressering).
+- De interne verwerking en routering bij de ontvanger na aankomst van de notificatie (zie TA Routering).
+- De technische invulling van toestemmingsregistratie (zie OTV/Mitz en aankomende EHDS-verordening).
+- De concrete registratie, publicatie en resolutie van notificatie-endpoints (zie GF Adressering).
 
 
 ### Functionele doelstellingen
@@ -65,14 +65,14 @@ De volgende voorbeelden illustreren waarom een notificatie functioneel waardevol
 
 #### Signaal-moeheid en specificiteit
 
-Zorgverleners hebben een eindige hoeveelheid aandacht. Het is een breed gedragen wens, zowel bij zorgverleners zelf als bij de overheid, om die aandacht efficiënt in te zetten en niet te laten verdrinken in irrelevante meldingen. Een notificatiesysteem dat te grofmazig werkt produceert *signaal-moeheid*: ontvangers leren de meldingen te negeren, en daarmee verdwijnt ook de waarde van de meldingen die wél relevant zijn. Het tegenovergestelde (geen melding sturen) laat de patiënt tussen wal en schip vallen.
+Zorgverleners hebben een eindige hoeveelheid aandacht. Het is een breed gedragen wens, zowel bij zorgverleners zelf als bij de overheid, om die aandacht efficiënt in te zetten. Een notificatiesysteem dat te grofmazig werk, produceert *signaal-moeheid*: Ontvangers leren de meldingen te negeren en daarmee verdwijnt ook de waarde van de meldingen die wél relevant zijn. Het tegenovergestelde (geen melding sturen) laat de patiënt tussen wal en schip vallen.
 
 De ontwerp-implicatie is dat notificaties **specifiek genoeg moeten zijn** om voor een ontvanger relevant te zijn, zonder dat de specificiteit ten koste gaat van privacy. Specifiek betekent hier: per onderwerp (welk type gegeven), per zender (welke organisatie), en — waar van toepassing — per filter (welke patient, uitvoerder, specifieke lab-uitslag-codes of welke verfijning binnen het onderwerp). Hoe deze specificiteit technisch wordt bereikt staat in [Onderwerp: keuze van SubscriptionTopic-codering](#onderwerp-keuze-van-subscriptiontopic-codering).
 
 
 ### Privacy
 
-Een notificatie draagt in deze specificatie geen klinische inhoud (zie [Notificatie-inhoud](#notificatie-inhoud)). Toch is een notificatie nooit volledig betekenisloos voor de privacy van de patiënt: het feit dát een lab-uitslag of een dossier-inzage plaatsvindt, koppelt al een patiënt aan een type zorgvraag en aan een zorgrelatie tussen twee organisaties. Dat is, hoe dun ook, een dossierkenmerk.
+Een notificatie draagt in deze specificatie geen klinische inhoud (zie [Notificatie-inhoud](#notificatie-inhoud)). Toch is een notificatie nooit volledig betekenisloos voor de privacy van de patiënt: het feit dát een lab-uitslag of een dossier-inzage plaatsvindt, koppelt al een patiënt aan een type zorgvraag en aan een zorgrelatie zorgrelatie met een bepaalde organisatie. Dat is, hoe dun ook, een dossierkenmerk.
 
 #### Dataminimalisatie
 
@@ -82,22 +82,24 @@ Notificaties MOETEN een `id-only` payload gebruiken: de notificatie meldt dát e
 
 Een patiënt moet kunnen verhinderen dat over haar gegevens notificaties tussen zorgaanbieders worden uitgewisseld, zelfs wanneer die notificaties dun zijn. De EHDS-verordening (Verordening (EU) 2025/327), artikel 9, bevestigt dit beginsel en breidt de transparantie- en logging-eisen uit naar elke vorm van toegang, ook geautomatiseerde. De technische invulling van dat blokkade-recht valt buiten deze specificatie: ze wordt geregeld door bestaande en aankomende toestemmingsmechanismen.
 
-Voor de Nederlandse context is op dit moment **Mitz** de operationele invulling: opt-in toestemming op zorgaanbieder-categorie × zorgaanbieder-categorie. Een verzender MOET vóór het versturen van een notificatie controleren dat er voor de betrokken patiënt een geldige toestemming of andere grondslag is voor de uitwisseling met de ontvangende categorie. Bij blokkade MAG GEEN notificatie worden verstuurd.
+Voor de Nederlandse context is op dit moment **Mitz** de operationele invulling: opt-in toestemming op combinaties van zorgaanbieder-categorie van de bronhouder (in het geval van notificaties: verzender) en zorgaanbieder-categorie van de raadpleger (in het geval van notificaties: ontvanger). Een verzender MOET vóór het versturen van een notificatie controleren dat er voor de betrokken patiënt een geldige toestemming of andere grondslag is voor de uitwisseling met de ontvangende categorie. Zonder toestemming of andere grondslag MAG GEEN notificatie worden verstuurd.
 
-Naar verwachting verschuift dit onder EHDS in de richting van doelgebonden toestemmingen en richting een patiënt-toegankelijk audit-log van álle toegang en uitwisseling.
+Naar verwachting verschuift dit onder EHDS in de richting van doelgebonden (opt-out) toestemmingen en richting een patiënt-toegankelijk audit-log van álle toegang en uitwisseling.
 
 
 ### Solution overview
 
 Een notificatie-uitwisseling tussen twee organisaties verloopt in een aantal stappen. Stappen 1 en 2 zijn voorbereidend (eenmalig per subscriptie/onderwerp); 3 en 4 zijn de operationele stappen die per gebeurtenis terugkeren. Stap 5 dekt herstel na een gemiste notificatie of een uitval van het kanaal.
 
-1. **Subscription registratie.** Aan de zijde van de verzendende organisatie wordt een `Subscription` aangemaakt voor de ontvangende organisatie, gebonden aan een vooraf afgesproken `SubscriptionTopic`. De afspraak hierover ligt bij de ontvanger: zij wíl voor dit onderwerp genotificeerd worden. Hoe de Subscription technisch tot stand komt (in-band: door de ontvanger zelf gePOST; out-of-band: door de verzender ingericht op basis van een eerder gemaakte afspraak) is per use case te bepalen. Voor de out-of-band subscripties wordt het notificatie-endpoint van de ontvanger opgezocht via GF Adressering (`Endpoint.connectionType = hl7-fhir-rest`, `payloadType = Subscription`).
-2. **Handshake.** Direct na registratie verstuurt de verzender een `handshake-notification` naar het notificatie-endpoint van de ontvanger om het kanaal te bevestigen en zet `Subscription.status` op `active`.
-3. **Event-notificaties.** Telkens wanneer aan de zijde van de verzender een gebeurtenis optreedt die past bij het topic (en het eventuele filter), verstuurt de verzender een `event-notification` Bundle. Elke notificatie krijgt een monotoon oplopend `event-number` zodat de ontvanger gemiste meldingen kan detecteren. De notificatie bevat geen klinische inhoud — alleen een `focus`-referentie naar de bron-resource bij de verzender.
+1. **Subscription registratie.** Aan de zijde van de verzendende organisatie wordt een `Subscription` aangemaakt voor de ontvangende organisatie, gebonden aan een vooraf afgesproken `SubscriptionTopic`. De afspraak hierover ligt bij de ontvanger: zij wíl voor dit onderwerp genotificeerd worden. Hoe de Subscription technisch tot stand komt is per use case te bepalen:
+    - in-band: door de ontvanger zelf gePOST; of
+    - out-of-band: door de verzender ingericht op basis van een eerder gemaakte afspraak  Voor de out-of-band subscripties wordt het notificatie-endpoint van de ontvanger opgezocht via GF Adressering (`Endpoint.connectionType = hl7-fhir-rest`, `payloadType = Subscription`).
+2. **Handshake.** Direct na registratie verstuurt de verzender een `handshake-notification` naar het notificatie-endpoint van de ontvanger om het kanaal te bevestigen en zet `Subscription.status` op `active`. *VRAAG: Is dit zowel bij in-band als out-of-banmd zo?*
+3. **Event-notificaties.** Telkens wanneer aan de zijde van de verzender een gebeurtenis optreedt die past bij het topic (en het eventuele filter), verstuurt de verzender een `event-notification` Bundle. Elke notificatie krijgt een monotoon oplopend `event-number` zodat de ontvanger gemiste meldingen kan detecteren. De notificatie bevat geen klinische inhoud — alleen een `focus`-referentie (literal reference) naar de bron-resource bij de verzender.
 4. **Heartbeats.** Op vooraf afgesproken intervallen verstuurt de verzender een `heartbeat-notification` zodat de ontvanger een uitval van het kanaal kan opmerken, ook wanneer er feitelijk geen gebeurtenissen plaatsvinden (optioneel als ontvanger dit opgeeft bij aanmaken van Subscription).
 5. **Catch-up bij verstoring.** Wanneer de ontvanger een gat in de `event-number`-reeks ziet of een verwachte heartbeat mist, gebruikt zij de operaties `$event` en `$status` op de Subscription bij de verzender om gemiste notificaties op te halen of de status van de Subscription te verifiëren.
 
-De ontvanger kan vervolgens de inhoud achter de `focus`-referentie ophalen via de FHIR-endpoint van de verzender. De inhoudelijke pull en de bijbehorende toegangscontrole vallen buiten deze specificatie (zie GF Identificatien&Authenticatie en GF Autorisatie).
+De ontvanger kan vervolgens de inhoud achter de `focus`-referentie ophalen via het FHIR-endpoint van de verzender. De inhoudelijke pull en de bijbehorende toegangscontrole vallen buiten deze specificatie (zie GF's Identificatien, Authenticatie, Autorisatie en Toestemming).
 
 
 ### Actoren
@@ -106,7 +108,7 @@ Twee actoren spelen in deze specificatie een operationele rol.
 
 #### Subscription Server
 
-De Subscription Server draait aan de zijde van de verzendende organisatie en is verantwoordelijk voor het beheer van Subscriptions en de aflevering van notificaties. De Server MOET:
+De Subscription Server draait aan de zijde van de verzendende organisatie en is verantwoordelijk voor het beheer van Subscriptions en de aflevering van notificaties. De Subscription Server MOET:
 
 - `Subscription`-resources aanmaken voor de afgesproken `SubscriptionTopic`(s) (o.b.v. vooraf afgesproken onderwerpen of als gevolg van een Subscription Client die een subscription vraagt);
 - `handshake-notification` Bundles versturen wanneer `Subscription.status` op `requested` staat (met retry), en `Subscription.status` daarop bijwerken;
@@ -115,19 +117,19 @@ De Subscription Server draait aan de zijde van de verzendende organisatie en is 
 - de operaties `$status` en `$event` op de Subscription ondersteunen, evenals `read` en `search` met zoekparameters `status`, `criteria`, `channel.endpoint`, `channel.type` en `channel.payload`;
 - vóór elk versturen verifiëren dat er een geldige Subscription voor deze ontvanger is, en dat aan de toestemmingsvoorwaarden voor de betrokken patiënt is voldaan (zie [Privacy en toestemming](#privacy-en-toestemming)).
 
-De Subscription Server MAG het aanmaken van Subscriptions door Subscription Clients ondersteunen (in-band beheerde Subscriptions).
+De Subscription Server MAG het aanmaken van Subscriptions door Subscription Clients ondersteunen (in-band beheerde Subscriptions). *VRAAG: is dit niet MOET als we use case 1 willen ondersteunen?*
 
 #### Subscription Client
 
-De Subscription Client draait aan de zijde van de ontvangende organisatie en consumeert notificaties. De Client MOET:
+De Subscription Client draait aan de zijde van de ontvangende organisatie en consumeert notificaties. De Subscription Client MOET:
 
 - notificatie-Bundles ontvangen op het notificatie-endpoint en deze intern doorgeven aan het verwerkende proces;
 - elke binnenkomende Bundle controleren op continuïteit, gebruikmakend van het hoogst verwerkte `event-number`; gemiste notificaties worden opgehaald via de `$event`-operatie bij de verzender;
 - (optioneel) op afgesproken intervallen controleren of een `heartbeat-notification` is uitgebleven; zo ja, dan MOET de Subscription-status via `$status` worden opgevraagd.
 
-De Client MAG ook op eigen initief `Subscription`-resources aanmaken voor de afgesproken `SubscriptionTopic`(s) bij een Subscription server
+De Subscription Client MAG ook op eigen initief `Subscription`-resources aanmaken voor de afgesproken `SubscriptionTopic`(s) bij een Subscription server. *VRAAG: is dit niet MOET als we use case 1 willen ondersteunen?*
 
-De Client is verantwoordelijk voor het signaleren en herstellen van foutieve communicatie, en BEHOORT daarom de toestand van haar Subscriptions bij te houden.
+De Subscription Client is verantwoordelijk voor het signaleren en herstellen van foutieve communicatie, en BEHOORT daarom de toestand van haar Subscriptions bij te houden.
 
 
 ### Onderwerp: keuze van SubscriptionTopic-codering
@@ -138,7 +140,7 @@ Deze specificatie kiest voor de [NL GF Data Categories CodeSystem](https://minvw
 
 #### Argument 1: voldoende specifiek voor de functionele doelstellingen
 
-De data-categorieën onderscheiden onderwerpen op een niveau dat past bij de use cases uit [Functionele doelstellingen](#functionele-doelstellingen). Een lab-uitslag valt onder `ObservationLaboratory`; een verplaatste OK-afspraak onder `Procedure` (en `Encounter`); een dossier-inzage onder `Logging` (AuditEvent). Dit niveau is voldoende fijn om relevant te zijn voor de ontvanger en voldoende grof om als nationaal hergebruikbaar onderwerp te dienen.
+De data-categorieën onderscheiden onderwerpen op een niveau dat past bij de use cases uit [Functionele doelstellingen](#functionele-doelstellingen). Een lab-uitslag valt onder `ObservationLaboratory`; een verplaatste OK-afspraak onder `Procedure` (en `Encounter`); een dossier-inzage onder `Logging` (AuditEvent). Dit niveau is voldoende fijn om relevant te zijn voor de ontvanger, voldoende grof om als nationaal herbruikbaar onderwerp te dienen en voldoende grof om niet ten koste gaan van privacy.
 
 #### Argument 2: hergebruik van triggers vanuit GF Lokalisatie
 
