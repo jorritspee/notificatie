@@ -140,70 +140,68 @@ Deze specificatie kiest voor de [NL GF Data Categories CodeSystem](https://minvw
 
 #### Argument 1: voldoende specifiek voor de functionele doelstellingen
 
-De data-categorieën onderscheiden onderwerpen op een niveau dat past bij de use cases uit [Functionele doelstellingen](#functionele-doelstellingen). Een lab-uitslag valt onder `ObservationLaboratory`; een verplaatste OK-afspraak onder `Procedure` (en `Encounter`); een dossier-inzage onder `Logging` (AuditEvent). Dit niveau is voldoende fijn om relevant te zijn voor de ontvanger, voldoende grof om als nationaal herbruikbaar onderwerp te dienen en voldoende grof om niet ten koste gaan van privacy.
+De data-categorieën onderscheiden onderwerpen op een niveau dat past bij de use cases uit [Functionele doelstellingen](#functionele-doelstellingen). Een lab-uitslag valt onder `ObservationLaboratory`; een verplaatste OK-afspraak onder `Procedure` (en `Encounter`); een dossier-inzage onder `Logging` (AuditEvent). Dit niveau is voldoende fijn om relevant te zijn voor de ontvanger, voldoende grof om als nationaal herbruikbaar onderwerp te dienen en voldoende grof om niet ten koste te gaan van privacy.
 
 #### Argument 2: hergebruik van triggers vanuit GF Lokalisatie
 
-Voor [GF Lokalisatie (NVI)](https://minvws.github.io/generiekefuncties-docs/) moeten verzenders deze data-categorieën sowieso al implementeren — als labels op de gegevens die ze beschikbaar maken voor lokalisatie-queries. De interne triggers en events die daarbij hoort (een nieuwe `ObservationLaboratory` wordt aangemaakt, een `Encounter` wordt verplaatst) kunnen ongewijzigd worden hergebruikt om notificaties op te baseren. Dat houdt de implementatielast bij verzenders beperkt en zorgt dat lokalisatie en notificatie semantisch consistent blijven.
-
+Voor [GF Lokalisatie (NVI)](https://minvws.github.io/generiekefuncties-docs/) moeten verzenders (datahouders) deze data-categorieën sowieso al implementeren — als labels op de gegevens die ze beschikbaar maken voor lokalisatie-queries (aanmelding bij de nationale verwijsindex (NVI)). De interne triggers en events die daarbij horen (bijv. een nieuwe `ObservationLaboratory` die wordt aangemaakt, een `Encounter` die wordt gemuteerd) kunnen ongewijzigd worden hergebruikt voor het samenstellen van notificaties. Dezelfde data-categorieen worden ook gebruikt voor de typering van Endpoints in de generieke functie Adressering. Hergebriuk van deze data-categorieen in notificaties houdt de implementatielast bij verzenders beperkt en zorgt ervoor dat lokalisatie, adressering en notificatie semantisch consistent blijven.  
 
 #### Voorbeeld: lab-uitslag voor de huisarts
 
-Voor de eerste use case uit [Functionele doelstellingen](#functionele-doelstellingen) wordt het topic geconstrueerd rond de code `ObservationLaboratory` uit de NL GF Data Categories codeset. Wanneer een ontvanger niet álle lab-notificaties van deze verzender wil ontvangen (signaal-moeheid), kan de Subscription worden afgebakend met de Backport-extension `backport-filter-criteria`. Bijvoorbeeld:
+Voor de eerste use case uit [Functionele doelstellingen](#functionele-doelstellingen) wordt het topic geconstrueerd rond de code `ObservationLaboratory` uit de NL GF Data Categories codeset. Wanneer een ontvanger niet álle lab-notificaties van deze verzender wil ontvangen (bijv. met het oog op de gegevensverwerkingsgrondslag of signaal-moeheid), kan de Subscription worden afgebakend met de Backport-extension `backport-filter-criteria`. Bijvoorbeeld:
 
 - `backport-filter-criteria = patient=Patient/1234567890` beperkt notificaties tot één specifieke patiënt;
 - `backport-filter-criteria = code=http://loinc.org|2951-2` beperkt tot één specifiek laboratoriumonderzoek (natrium in serum);
 - combinaties zijn mogelijk om bijvoorbeeld alleen vitale-parameter-uitslagen voor een bepaalde monitoring-cohort te ontvangen.
 
-Het topic blijft daarmee een gedeelde, nationaal afgesproken eenheid; de afbakening per Subscription is een lokale keuze van de ontvanger en is een belangrijk instrument om irrelevante notificaties te voorkomen.
+Het topic blijft daarmee een gedeelde, nationaal afgesproken eenheid; de afbakening per Subscription is een lokale keuze van de ontvanger en is een belangrijk instrument om irrelevante notificaties te voorkomen. *vraag: is het slim om een eindige set aan toegestane filters af te spreken? Dus bijvoorbeeld MOET ondersteunen de volgende search/filter parameters: patient, code, category*
 
 #### Open einde: Nictiz-review en mogelijke SNOMED/LOINC-verschuiving
 
 De NL GF Data Categories codeset staat sinds enige tijd in review bij Nictiz en kan op onderdelen nog wijzigen. In de nieuwe [BgZ versie 2.0 (Technical IG, paragraaf 4.3)](https://informatiestandaarden.nictiz.nl/wiki/bgz:V2.0_Technical_IG_BgZ_MSZ) wordt voor data-categorisering gewerkt met SNOMED- en LOINC-codes. Het is denkbaar dat de uiteindelijke nationale codeset voor topic-codering in die richting verschuift; de onderwerpen die er semantisch in zitten zijn niet wezenlijk anders dan in de huidige NL GF Data Categories. Deze specificatie kan op dat punt zonder structurele wijzigingen worden bijgewerkt — alleen de canonical-URL's en displaynames van topics zouden meebewegen.
 
-
 ### Transacties
 
-De onderstaande transacties verlopen tussen Subscription Server en Subscription Client over een mTLS-beveiligd kanaal (zie [Security](#security)). De wire-format en gedragsdetails volgen de [Subscriptions R5 Backport voor R4](https://hl7.org/fhir/uv/subscriptions-backport/); hieronder beperken we ons tot de eisen die in deze context aanvullend of beperkend zijn.
+De onderstaande transacties verlopen tussen Subscription Server en Subscription Client over een mTLS-beveiligd kanaal (zie [Security](#security), na publicatie van de specificaties van Veilig Netwerk zal daarnaar worden verwezen). De wire-format en gedragsdetails volgen de [Subscriptions R5 Backport voor R4](https://hl7.org/fhir/uv/subscriptions-backport/); hieronder beperken we ons tot de eisen die in deze context aanvullend of beperkend zijn.
 
 #### Subscription aanmaken
 
-Een `Subscription` wordt aangemaakt aan de zijde van de verzender. Dit gebeurt 'out-of-band' (de verzender richt de Subscription in op basis van een, via GF Adressering, verkregen notificatie-endpoint met de ontvanger) of in-band (de ontvanger POST een Subscription naar de Server). Een Subscription:
+Een `Subscription` wordt aangemaakt aan de zijde van de verzender. Dit gebeurt 'out-of-band' (de verzender richt de Subscription in op basis van een, via GF Adressering, verkregen notificatie-endpoint van de ontvanger) of 'in-band' (de ontvanger POST een Subscription naar de Server). Een Subscription:
 
-- MOET een vooraf afgesproken `SubscriptionTopic`-canonical dragen op `Subscription.criteria` via de extension `backport-topic-canonical`;
+- MOET een vooraf afgesproken `SubscriptionTopic`-canonical bevatten op `Subscription.criteria` via de extension `backport-topic-canonical`;
 - MAG een afbakenend filter dragen via de extension `backport-filter-criteria` (zie [voorbeeld](#voorbeeld-lab-uitslag-voor-de-huisarts));
-- MOET `Subscription.channel.type = rest-hook` zetten met het notificatie-endpoint van de ontvanger;
-- MOET `Subscription.channel.payload = application/fhir+json` zetten en de extension `backport-payload-content = id-only` (zie [Notificatie-inhoud](#notificatie-inhoud));
+- MOET `Subscription.channel.type = rest-hook` bevatten, met het notificatie-endpoint van de ontvanger;
+- MOET `Subscription.channel.payload = application/fhir+json` bevatten, en de extension `backport-payload-content = id-only` (zie [Notificatie-inhoud](#notificatie-inhoud));
 - MOET bij gebruik op `active` staan en bij retirement op `off` worden gezet (niet verwijderd).
 
-Een Subscription is bedoeld als langlopende afspraak tussen Server & Client over een topic, niet als per-geval object.
+Een Subscription is bedoeld als langlopende afspraak tussen Subscription Server & Subscription Client over een topic, niet als per-geval object.
 
 #### Handshake-notification
 
-Na aanmaak van een Subscription verstuurt de Server een `handshake-notification` Bundle naar het notificatie-endpoint van de ontvanger. Bij succes wordt `Subscription.status` op `active` gezet; bij falen wordt met exponentiële backoff geretryd, en bij blijvend falen op `error` gezet.
+Na aanmaak van een Subscription verstuurt de Subscription Server een `handshake-notification` Bundle naar het notificatie-endpoint van de ontvanger. Bij succes wordt `Subscription.status` op `active` gezet; bij falen wordt met exponentiële backoff geretryd, en bij blijvend falen op `error` gezet. *VRAAG: Is de handshake-notification ook verplicht voor 'out-of-band' Subscriptions? DIt zou dan een extra transactie zijn t.o.v. de huidige TANP/TAeO flows.*
 
 #### Event-notification
 
 Bij elke gebeurtenis die past bij het topic en het filter verstuurt de Server één `event-notification` Bundle naar het notificatie-endpoint van de ontvanger. De Bundle:
 
-- MOET een monotoon oplopend `event-number` dragen, op een concurrency-veilige manier toegekend;
-- MOET een `notification-event.focus` dragen die naar de bron-resource bij de verzender verwijst;
+- MOET een monotoon oplopend `event-number` bevatten, op een concurrency-veilige manier toegekend;
+- MOET een `notification-event.focus` bevatten, die een literal reference naar de bron-resource bij de verzender als waarde heeft;
 - MAG GEEN klinische inhoud dragen (zie [Notificatie-inhoud](#notificatie-inhoud)).
 
 #### Heartbeat-notification
 
-Op vooraf afgesproken intervallen verstuurt de Server een `heartbeat-notification` Bundle. Dit dient als levensteken voor het kanaal en stelt de ontvanger in staat een stille uitval te detecteren ook wanneer er geen events optreden.
+Op vooraf afgesproken intervallen verstuurt de Subscription Server een `heartbeat-notification` Bundle. Dit dient als levensteken voor het kanaal en stelt de ontvanger in staat een stille uitval te detecteren ook wanneer er geen events optreden.
 
 #### `$status` en `$event`
 
 De ontvanger gebruikt:
 
-- `$status` om de huidige toestand van een Subscription bij de Server op te vragen — typisch na een uitgebleven heartbeat;
+- `$status` om de huidige toestand van een Subscription bij de Subscription Server op te vragen — typisch na een uitgebleven heartbeat;
 - `$event` om een specifieke `event-number` of een bereik daarvan op te halen — typisch na detectie van een gat in de reeks.
 
 #### Foutafhandeling
 
-Alle transacties MOETEN bij fouten een FHIR `OperationOutcome` met passende HTTP-statuscode teruggeven. Clients MOETEN transient fouten (`5xx`, netwerkfouten) met exponentiële backoff retryen. Verwerking MOET idempotent zijn: het opnieuw afleveren van een eerder verwerkte notificatie MAG GEEN dubbele neveneffecten veroorzaken.
+Alle transacties MOETEN bij fouten een FHIR `OperationOutcome` met passende HTTP-statuscode teruggeven. Subscription Clients MOETEN transient fouten (`5xx`, netwerkfouten) met exponentiële backoff retryen. Verwerking MOET idempotent zijn: het opnieuw afleveren van een eerder verwerkte notificatie MAG GEEN dubbele neveneffecten veroorzaken.
 
 
 ### Notificatie-inhoud
@@ -221,36 +219,37 @@ Omdat de payload `id-only` is, leert de ontvanger uit de Bundle alleen *dát* ee
 
 Ten opzichte van een notificatie zonder resource-id heeft `id-only` een duidelijk operationeel voordeel. Zonder id moet de ontvanger binnen het topic zelf gaan zoeken welke wijziging bij de notificatie hoort (bijvoorbeeld via extra zoekopdrachten op tijdvenster, patiënt of status). Dat maakt de uitkomst potentieel ambigu wanneer meerdere resources kort na elkaar wijzigen, verhoogt de kans op verkeerde correlatie, belast zowel zender- als ontvangersystemen met extra queries en vergroot het dataverkeer op de lijn. Met `id-only` is meteen duidelijk waar de notificatie over gaat, terwijl de inhoud alsnog pas via geautoriseerde pull wordt opgehaald.
 
-
 ### Relatie tot andere specificaties
 
 Deze specificatie levert een specificatie voor *notificaties*. Andere specificaties bouwen daarop voort om volledige workflows in te richten:
 
 #### Consequentie voor eOverdracht (wijziging van §5.3.2 Notificatie)
 
-Om de eOverdracht-notificatie uit de Nuts leveranciersspecificatie te laten aansluiten op deze specificatie, moet het huidige mechanisme (lege `POST` naar `notification/<Task.id>`) functioneel gelijk blijven, maar technisch anders worden ingevuld:
+Om de eOverdracht-notificatie uit de Nuts leveranciersspecificatie te laten aansluiten op deze specificatie, kan het huidige mechanisme (lege `POST` naar `<notification-endpoint-url>/<Task.id>`) functioneel gelijk blijven, maar moet het technisch anders worden ingevuld:
 
 1. **Van pad-gecodeerde Task-id naar `id-only` event in de payload.**
-	De Task-identificatie verhuist uit de URL naar `notification-event.focus` in de notificatie-Bundle (bijv. `Task/<id>`). Het endpoint wordt daarmee een stabiel notificatie-endpoint per Subscription in plaats van een endpoint met resource-id in het pad.
+	De Task-identificatie verhuist uit de URL (`/<Task.id>`) naar `notification-event.focus` in de notificatie-Bundle (bijv. `Task/<id>`). Het endpoint wordt daarmee een stabiel notificatie-endpoint per Subscription in plaats van een endpoint met resource-id in het pad.
 2. **Van lege POST naar standaard Backport notificatie-Bundle.**
 	In plaats van een lege body verstuurt de verzender een FHIR `Bundle` (`backport-subscription-notification`) met `Parameters` (`backport-subscription-status-r4`) met minimaal: `type`, `subscription`, `notification-event.event-number`, `notification-event.timestamp`, `notification-event.focus`.
 3. **Expliete Subscription-afspraak vooraf.**
-	De notificatie wordt vooraf geactiveerd via een `Subscription` op de verzender, met topic op `Request` en filters voor ontvanger/workflowcontext. Dit vervangt de impliciete afspraak dat elke POST op `notification/<Task.id>` een geldige notificatie is.
-4. **Lifecycle-signalen toevoegen.**
+	De notificatie wordt vooraf door de verzender 'out-of-band' geactiveerd via een `Subscription`, met topic op `Request` en filters voor ontvanger/workflowcontext. Dit vervangt de impliciete afspraak dat elke POST op `notification/<Task.id>` een geldige notificatie is.
+4. **Lifecycle-signalen toevoegen.** *VRAAG: In de eOverdracht use case wordt de data door ontvanger eenmalig opgehaaald bij verzender, dus ik weet niet of Lifecycle-signalen nodig zijn*
 	Naast event-notificaties ondersteunt eOverdracht dan ook `handshake-notification` (kanaalbevestiging) en optioneel `heartbeat-notification` (beschikbaarheid kanaal), zodat storingen sneller detecteerbaar zijn.
-5. **Gestandaardiseerd herstel bij missende notificaties.**
+5. **Gestandaardiseerd herstel bij missende notificaties.** *VRAAG: In de eOverdracht use case wordt de data door ontvanger eenmalig opgehaaald bij verzender, en zijn er maar heel weinig notificaties (1 bij aanmaak Task, 1 bij wijzigen Task.status) dus ik weet niet of herstel bij missende notificaties nodig is*
 	De ontvanger detecteert gaten via `event-number` en haalt ontbrekende events op via `$event`; kanaalstatus wordt gecontroleerd via `$status`. Dit vervangt ad-hoc herstel op basis van alleen HTTP retries of timeouts.
 6. **Foutafhandeling harmoniseren met FHIR R4 Backport.**
 	Fouten blijven via HTTP-statuscodes lopen, met `OperationOutcome` als foutbody. Het semantische contract verschuift van "lege POST ontvangen" naar "Backport-notificatie valide verwerkt".
 
-Voor eOverdracht betekent dit inhoudelijk géén wijziging in het notified-pull principe: de ontvanger blijft na notificatie de `Task` en vervolgens het overdrachtsbericht ophalen onder bestaande autorisatie- en grondslagregels. De wijziging zit in standaardisatie en robuustheid van het notificatiekanaal.
+Voor eOverdracht betekent dit functioneel géén wijziging in het notified-pull principe: de ontvanger blijft na notificatie de `Task` en vervolgens het overdrachtsbericht ophalen onder bestaande autorisatie- en grondslagregels. De wijziging zit in verdergaande standaardisatie van datamodel en data-interacties en verbeterde robuustheid van het notificatiekanaal.
 
-#### Consequentie voor BGZ-verwijzing
-De BGZ-verwijzing gebruikt in de huidige Technical IG een Notified Pull-patroon met een notification-task die de ontvanger uitnodigt om vooraf gedefinieerde queries uit te voeren. Functioneel blijft dat patroon bruikbaar, maar technisch wijkt het af van de in deze specificatie beschreven notificatie-uitwisseling op basis van Subscription en event-notifications.
+#### Consequentie voor BgZ-verwijzing
+De BgZ-verwijzing gebruikt in de huidige Technical IG een Notified Pull-patroon met een notification-task die de ontvanger uitnodigt om vooraf gedefinieerde queries uit te voeren. Functioneel blijft dat patroon bruikbaar, maar technisch wijkt het af van de in deze specificatie beschreven notificatie-uitwisseling op basis van Subscription en event-notifications.
 
-Voor aansluiting op deze specificatie is het daarom wenselijk dat BGZ-verwijzing gebruik gaat maken van een workflow met een medisch/functioneel gedreven request, vergelijkbaar met de benadering in eOverdracht. Daarbij kan aansluiting worden gezocht bij de Clinical Order Workflow IG en/of de eOverdracht IG voor de proceslaag (request, status, afhandeling), terwijl notificatie en pull als afzonderlijke gestandaardiseerde transacties worden toegepast zoals in dit document beschreven.
+Voor aansluiting op deze specificatie is het daarom wenselijk dat BgZ-verwijzing gebruik gaat maken van een workflow met een medisch/functioneel gedreven request, vergelijkbaar met de benadering in eOverdracht. De inhoud van dit request representeert dan niet het container-begrip "BgZ-verwijzing" maar de daadwerkelijke reden van de verwijziging (bijv. "bloedonderzoek"). Daarbij kan aansluiting worden gezocht bij de Clinical Order Workflow IG en/of de eOverdracht IG voor de proceslaag (request, status, afhandeling), terwijl notificatie en pull als afzonderlijke gestandaardiseerde transacties worden toegepast zoals in dit document beschreven.
 
 De concrete uitwerking van die workflowlaag (procesmodel, resources en statusovergangen) valt buiten scope van deze specificatie en wordt hier niet verder beschreven.
+
+*gereviewd tot hier*
 
 #### Consequentie voor notificaties binnen MedicatieOverdracht
 
